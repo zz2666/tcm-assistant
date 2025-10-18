@@ -1,12 +1,9 @@
-streamlit==1.32.0
-zhipuai>=1.0.7
-sentence-transformers==2.2.2
-langchain==0.1.11
-langchain-community==0.0.29
-chromadb==0.4.22
-torch==1.13.1
-transformers==4.26.0
-protobuf==3.20.3
+streamlit
+zhipuai
+langchain
+langchain-community
+sentence-transformers
+chromadb
 
 
 

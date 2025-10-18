@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-import zhipuai
+from zhipuai import ZhipuAI
 from datetime import datetime
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -198,18 +198,10 @@ if "show_constitution_test" not in st.session_state:
     st.session_state.show_constitution_test = False
 
 try:
-    # 首先尝试从 Streamlit secrets 获取
-    api_key = st.secrets["ZHIPUAI_API_KEY"]
-except (KeyError, AttributeError):
-    # 如果失败，再尝试从环境变量获取
-    try:
-        api_key = os.environ["ZHIPUAI_API_KEY"]
-    except KeyError:
-        st.error("❌ 未找到 API 密钥。请在 Streamlit 的 Secrets 或环境变量中配置 ZHIPUAI_API_KEY。")
-        st.stop()
-
-# 初始化 ZhipuAI 客户端
-zhipuai.api_key = api_key
+    client = ZhipuAI(api_key=os.environ["ZHIPUAI_API_KEY"])
+except KeyError:
+    st.error("❌ 请在Streamlit的Secrets中配置ZHIPUAI_API_KEY。")
+    st.stop()
 
 # --------------------------
 # 4. 调用模型函数 (全新多轮对话逻辑)
@@ -269,12 +261,9 @@ def call_zhipu_llm(user_query, history, more_advice=False):
     messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": user_query}]
     try:
         # 使用GLM-4.5V模型
-       response = zhipuai.model_api.invoke(
-    model="GLM-4.5V",
-    prompt=messages,
-    temperature=0.2
-)
-cleaned_content = clean_model_output(response["choices"][0]["content"])
+        response = client.chat.completions.create(model="GLM-4.5V", messages=messages, temperature=0.2)
+        # 清理输出中的特殊标记
+        cleaned_content = clean_model_output(response.choices[0].message.content)
         return cleaned_content
     except Exception as e:
         return f"❌ API调用失败：{str(e)}"

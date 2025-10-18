@@ -1,4 +1,20 @@
 import streamlit as st
+import subprocess
+import sys
+
+# 依赖检查与自动安装
+def install_package(package):
+    st.info(f"正在安装 {package}...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
+    st.success(f"{package} 安装成功!")
+
+# 检查关键依赖
+try:
+    import sentence_transformers
+except ImportError:
+    install_package("sentence-transformers==2.2.2")
+    import sentence_transformers
+import streamlit as st
 import os
 from zhipuai import ZhipuAI
 from datetime import datetime

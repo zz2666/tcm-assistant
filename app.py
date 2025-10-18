@@ -198,10 +198,18 @@ if "show_constitution_test" not in st.session_state:
     st.session_state.show_constitution_test = False
 
 try:
-    client = ZhipuAI(api_key=os.environ["ZHIPUAI_API_KEY"])
-except KeyError:
-    st.error("❌ 请在Streamlit的Secrets中配置ZHIPUAI_API_KEY。")
-    st.stop()
+    # 首先尝试从 Streamlit secrets 获取
+    api_key = st.secrets["ZHIPUAI_API_KEY"]
+except (KeyError, AttributeError):
+    # 如果失败，再尝试从环境变量获取
+    try:
+        api_key = os.environ["ZHIPUAI_API_KEY"]
+    except KeyError:
+        st.error("❌ 未找到 API 密钥。请在 Streamlit 的 Secrets 或环境变量中配置 ZHIPUAI_API_KEY。")
+        st.stop()
+
+# 初始化 ZhipuAI 客户端
+client = ZhipuAI(api_key=api_key)
 
 # --------------------------
 # 4. 调用模型函数 (全新多轮对话逻辑)

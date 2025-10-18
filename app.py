@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from zhipuai import ZhipuAI
+import zhipuai
 from datetime import datetime
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -209,7 +209,7 @@ except (KeyError, AttributeError):
         st.stop()
 
 # 初始化 ZhipuAI 客户端
-client = ZhipuAI(api_key=api_key)
+zhipuai.api_key = api_key
 
 # --------------------------
 # 4. 调用模型函数 (全新多轮对话逻辑)
@@ -269,9 +269,12 @@ def call_zhipu_llm(user_query, history, more_advice=False):
     messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": user_query}]
     try:
         # 使用GLM-4.5V模型
-        response = client.chat.completions.create(model="GLM-4.5V", messages=messages, temperature=0.2)
-        # 清理输出中的特殊标记
-        cleaned_content = clean_model_output(response.choices[0].message.content)
+       response = zhipuai.model_api.invoke(
+    model="GLM-4.5V",
+    prompt=messages,
+    temperature=0.2
+)
+cleaned_content = clean_model_output(response["choices"][0]["content"])
         return cleaned_content
     except Exception as e:
         return f"❌ API调用失败：{str(e)}"

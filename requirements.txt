@@ -5,6 +5,8 @@ langchain==0.1.11
 langchain-community==0.0.29
 sentence-transformers==2.2.2
 chromadb==0.4.22
+torch>=1.6.0
+transformers>=4.6.0
 
 
 

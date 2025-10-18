@@ -1,21 +1,6 @@
 import streamlit as st
-import subprocess
-import sys
-
-# 依赖检查与自动安装
-def install_package(package):
-    st.info(f"正在安装 {package}...")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-    st.success(f"{package} 安装成功!")
-
-# 检查关键依赖
-try:
-    import sentence_transformers
-except ImportError:
-    install_package("sentence-transformers==2.2.2")
-    import sentence_transformers
-import streamlit as st
 import os
+import base64
 from zhipuai import ZhipuAI
 from datetime import datetime
 from langchain_community.document_loaders import TextLoader
@@ -35,68 +20,54 @@ st.set_page_config(
 # ========== 全新配色方案与样式 ==========
 st.markdown("""
     <style>
-        /* 全局背景和字体 - 已修改为纯白色 */
-        .stApp {
-            background-color: #FFFFFF !important; /* 纯白色背景 */
-        }
-        /* 主标题样式 */
+        .stApp { background-color: #FFFFFF !important; }
         .title {
             text-align: center;
-            color: #3A5F0B; /* 深竹青色 */
-            font-family: 'KaiTi', 'SimSun', serif; /* 楷体或宋体，增加古典感 */
+            color: #3A5F0B;
+            font-family: 'KaiTi', 'SimSun', serif;
         }
-        /* Streamlit原生按钮样式覆盖 */
         .stButton>button {
             width: 100%;
             border-radius: 8px;
-            border: 1px solid #8B4513; /* 鞍褐色边框 */
-            color: #8B4513; /* 鞍褐色文字 */
+            border: 1px solid #8B4513;
+            color: #8B4513;
             background-color: #FFFFFF;
         }
         .stButton>button:hover {
             border-color: #3A5F0B;
             color: #3A5F0B;
         }
-        /* 主操作按钮（例如"获取分析"） */
         .stButton>button[data-baseweb="button"] {
-            background-color: #3A5F0B; /* 深竹青色 */
+            background-color: #3A5F0B;
             color: #FFFFFF;
             border: none;
         }
         .stButton>button[data-baseweb="button"]:hover {
-            background-color: #556B2F; /* 暗橄榄绿 */
+            background-color: #556B2F;
             color: #FFFFFF;
         }
-        /* 次要按钮（例如"清空记录"） */
         .stButton>button[kind="secondary"] {
-            background-color: #A0522D; /* 赭色 */
+            background-color: #A0522D;
             color: white;
             border: none;
         }
-        /* 信息提示框样式 */
-        .stAlert {
-            border-radius: 8px;
-        }
-        /* 更多建议卡片 */
+        .stAlert { border-radius: 8px; }
         .continue-card {
             padding: 1rem;
             border-radius: 0.5rem;
-            background-color: #FFF8DC; /* 玉米色 */
-            border: 1px solid #D2B48C; /* 鞣革色边框 */
+            background-color: #FFF8DC;
+            border: 1px solid #D2B48C;
             margin: 1rem 0;
         }
-        /* 诊断时间戳 */
         .diagnosis-time {
             color: #696969;
             font-size: 0.8em;
             text-align: right;
         }
-        /* Expander 展开组件样式 */
         .st-expander, .st-expander header {
-            background-color: #FAF0E6; /* 亚麻色 */
+            background-color: #FAF0E6;
             border-radius: 8px;
         }
-        /* 体质测试中央弹窗容器样式 */
         .modal {
             position: fixed;
             top: 50%;
@@ -104,45 +75,64 @@ st.markdown("""
             transform: translate(-50%, -50%);
             width: 90%;
             max-width: 650px;
-            background: #f2e7ff; /* 淡紫色背景 */
+            background: #f2e7ff;
             padding: 2rem;
             border-radius: 15px;
             box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-            z-index: 1000; /* 置于顶层 */
+            z-index: 1000;
         }
-        
-        /* 症状按钮样式 - 改为竹叶青色 */
         div[data-testid="stExpander"] .stButton>button {
-            border: 1px solid #3A5F0B !important; /* 深竹青色边框 */
-            color: #3A5F0B !important; /* 深竹青色文字 */
-            background-color: #F0FFF0 !important; /* 蜜瓜绿背景 */
+            border: 1px solid #3A5F0B !important;
+            color: #3A5F0B !important;
+            background-color: #F0FFF0 !important;
             border-radius: 8px;
         }
         div[data-testid="stExpander"] .stButton>button:hover {
-            background-color: #E0EEE0 !important; /* 悬停时稍暗一点 */
+            background-color: #E0EEE0 !important;
             color: #1C2F0C !important;
         }
-        
-        /* 已选中的症状按钮 - 竹叶青色填充 */
         div[data-testid="stExpander"] .stButton>button[data-baseweb="button"] {
-            background-color: #3A5F0B !important; /* 深竹青色背景 */
-            color: #FFFFFF !important; /* 白色文字 */
+            background-color: #3A5F0B !important;
+            color: #FFFFFF !important;
             border: none !important;
         }
-        
-        /* 风险提示样式 */
         .risk-warning {
             background-color: #FFF3CD;
-            padding: 10px; 
+            padding: 10px;
             border-left: 4px solid #FF9800;
             margin-bottom: 20px;
+        }
+        .doctor-avatar-box {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        .doctor-avatar-img {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #3A5F0B;
+            background: #FFF;
+            flex-shrink: 0;
+        }
+        .doctor-avatar-content {
+            flex: 1;
+            min-width: 0;
         }
     </style>
     """, unsafe_allow_html=True)
 
-# --------------------------
-# 2. 中医体质测试模块 (硬编码)
-# --------------------------
+# --- base64图片编码函数 ---
+def get_base64_image(img_path):
+    with open(img_path, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+# ========================
+# 2. 体质测试模块
+# ========================
 CONSTITUTION_QUESTIONS = [
     {"q": "1. 您手脚发凉的情况多吗？", "options": ["没有", "很少", "有时", "经常", "总是"], "type": "阳虚质"},
     {"q": "2. 您感到精力不济，容易疲乏吗？", "options": ["没有", "很少", "有时", "经常", "总是"], "type": "气虚质"},
@@ -181,9 +171,9 @@ def judge_constitution(answers):
     else:
         return "混合或不明显体质", "您的体质倾向不太明显，建议结合具体症状进行综合判断，并保持健康的生活方式。"
 
-# --------------------------
+# ===========================
 # 3. 知识库加载与核心初始化
-# --------------------------
+# ===========================
 @st.cache_resource
 def load_knowledge_base():
     try:
@@ -214,24 +204,15 @@ if "show_constitution_test" not in st.session_state:
     st.session_state.show_constitution_test = False
 
 try:
-    # 首先尝试从 Streamlit secrets 获取
-    api_key = st.secrets["ZHIPUAI_API_KEY"]
-except (KeyError, AttributeError):
-    # 如果失败，再尝试从环境变量获取
-    try:
-        api_key = os.environ["ZHIPUAI_API_KEY"]
-    except KeyError:
-        st.error("❌ 未找到 API 密钥。请在 Streamlit 的 Secrets 或环境变量中配置 ZHIPUAI_API_KEY。")
-        st.stop()
+    client = ZhipuAI(api_key=os.environ["ZHIPUAI_API_KEY"])
+except KeyError:
+    st.error("❌ 请在Streamlit的Secrets中配置ZHIPUAI_API_KEY。")
+    st.stop()
 
-# 初始化 ZhipuAI 客户端
-client = ZhipuAI(api_key=api_key)
-
-# --------------------------
-# 4. 调用模型函数 (全新多轮对话逻辑)
-# --------------------------
+# ===========================
+# 4. 调用模型函数
+# ===========================
 def clean_model_output(text):
-    """清除模型输出中的特殊标记"""
     if text:
         return text.replace("<|begin_of_box|>", "").replace("<|end_of_box|>", "")
     return text
@@ -243,99 +224,87 @@ def call_zhipu_llm(user_query, history, more_advice=False):
         retriever = st.session_state.vectorstore.as_retriever(search_kwargs={"k": search_k})
         retrieved_docs = retriever.get_relevant_documents(user_query)
         related_knowledge = "\n".join([doc.page_content for doc in retrieved_docs])
-
-    # 根据对话历史判断使用哪个Prompt
-    if not history: # 这是第一轮对话，强制追问
+    if not history:
         system_prompt = f"""作为一名资深的中医专家，你的首要任务是进行严谨的"问诊"。用户刚刚提供了初步症状，你的唯一目标是提出2-3个关键的追问问题，以获取更全面的信息。请遵循以下规则：
-1.  **禁止诊断**：在这一轮对话中，绝对不允许给出任何形式的证型判断或养生建议。
-2.  **聚焦关键问题**: 你的问题必须围绕以下核心方面展开：
-    - **症状持续时间**: 例如："这种情况持续多久了？"
-    - **具体表现与诱因**: 例如："咳嗽是干咳还是有痰？什么情况下会加重？"
-    - **伴随症状**: 根据初步症状，推断并询问可能被忽略的其他相关症状。例如，如果用户说"头痛"，你可以问"是否伴有恶心、畏光或鼻塞？"
-3.  **引用知识**: 你可以参考以下检索到的资料来构思更专业的问题。
+1.  禁止诊断：在这一轮对话中，绝对不允许给出任何形式的证型判断或养生建议。
+2.  聚焦关键问题: 你的问题必须围绕以下核心方面展开：
+    - 症状持续时间: 例如："这种情况持续多久了？"
+    - 具体表现与诱因: 例如："咳嗽是干咳还是有痰？什么情况下会加重？"
+    - 伴随症状: 根据初步症状，推断并询问可能被忽略的其他相关症状。例如，如果用户说"头痛"，你可以问"是否伴有恶心、畏光或鼻塞？"
+3.  引用知识: 你可以参考以下检索到的资料来构思更专业的问题。
     --- 检索到的资料 ---
     {related_knowledge}
     --- 资料结束 ---
-4.  **结尾引导**: 在提出问题后，以一句话引导用户回答，例如："请您补充这些信息，以便我能更准确地为您分析。"
+4.  结尾引导: 在提出问题后，以一句话引导用户回答，例如："请您补充这些信息，以便我能更准确地为您分析。"
 你的回答必须直接以问题开始，简洁明了。"""
-    elif more_advice: # 获取更多建议模式
+    elif more_advice:
         system_prompt = f"""作为一名资深的中医专家，请严格依据以下从本地知识库检索到的资料，为用户提供专业的调理建议。
 --- 检索到的资料 ---
 {related_knowledge}
 --- 资料结束 ---
 要求：
-1. **内容来源**: 你的回答必须完全基于上述"检索到的资料"。
-2. **输出结构**: 分"一、膏方建议"、"二、茶饮建议"、"三、药膳建议"、"四、理疗建议"四个部分清晰作答。
-3. **专业性**: 语言专业、严谨，给出建议时可简要说明其适应证。
-4. **补充原则**: 如果资料不全，无法覆盖所有四个方面，请仅就资料中有的部分作答，并明确指出"关于XX方面的建议，资料中暂未提及"。绝不允许自行编撰。"""
-    else: # 这是第二轮或之后的对话，可以进行诊断
+1. 内容来源: 你的回答必须完全基于上述"检索到的资料"。
+2. 输出结构: 分"一、膏方建议"、"二、茶饮建议"、"三、药膳建议"、"四、理疗建议"四个部分清晰作答。
+3. 专业性: 语言专业、严谨，给出建议时可简要说明其适应证。
+4. 补充原则: 如果资料不全，无法覆盖所有四个方面，请仅就资料中有的部分作答，并明确指出"关于XX方面的建议，资料中暂未提及"。绝不允许自行编撰。"""
+    else:
         system_prompt = f"""作为一名资深的中医专家，你的任务是基于用户描述的症状及补充信息，结合本地知识库的资料，进行严谨的辨证分析。
 --- 检索到的资料 ---
 {related_knowledge}
 --- 资料结束 ---
 请遵循以下规则进行回复：
-1. **辨证分析**:
-   - **优先引用**: 必须优先结合并引用"检索到的资料"进行分析。
-   - **补充诊断**: 若资料不足以支撑诊断，你可以结合自身庞大的中医知识库进行补充和推断，但需明确告知用户"根据资料并结合我的知识判断..."。
-2. **养生建议**:
+1. 辨证分析:
+   - 优先引用: 必须优先结合并引用"检索到的资料"进行分析。
+   - 补充诊断: 若资料不足以支撑诊断，你可以结合自身庞大的中医知识库进行补充和推断，但需明确告知用户"根据资料并结合我的知识判断..."。
+2. 养生建议:
    - 给出3-5条具体、可操作的非药物建议（如饮食、起居、运动、情绪调理）。
-3. **格式要求**:
+3. 格式要求:
    - 回复必须分为"一、辨证分析"和"二、养生建议"两部分。
    - 语言专业、沉稳、易于理解。"""
     messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": user_query}]
     try:
-        # 使用GLM-4.5V模型
         response = client.chat.completions.create(model="GLM-4.5V", messages=messages, temperature=0.2)
-        # 清理输出中的特殊标记
         cleaned_content = clean_model_output(response.choices[0].message.content)
         return cleaned_content
     except Exception as e:
         return f"❌ API调用失败：{str(e)}"
 
-# --------------------------
+# ===========================
 # 5. 主页面与弹窗视图切换
-# --------------------------
-# 注意：将分支逻辑放在最外层，明确区分两个视图，避免中间的白框问题
+# ===========================
+doctor_avatar_b64 = get_base64_image("images/doctor_avatar.png")
+tcm_logo_b64 = get_base64_image("images/tcm_logo.png")
 
 if st.session_state.show_constitution_test:
-    # ========== 体质测试视图 ==========
     st.header("🧬 中医体质自测")
-    
-    # 添加风险提示
     st.markdown('<div class="risk-warning"><strong>⚠️ 风险提示：</strong>本产品仅为AI技术演示，内容仅供参考，不能替代专业医疗诊断。如有健康问题，请及时就医。</div>', unsafe_allow_html=True)
-    
     st.caption("根据您近期的身体感受，选择最符合的选项。")
     answers = []
     for i, item in enumerate(CONSTITUTION_QUESTIONS):
         st.write(f"**{item['q']}**")
-        # 使用唯一的key和label_visibility="collapsed"避免产生多余标签
         answer = st.radio(
-            label=f"问题{i+1}", 
-            options=item['options'], 
+            label=f"问题{i+1}",
+            options=item['options'],
             key=f"test_q_{i}",
             horizontal=True,
             label_visibility="collapsed"
         )
         answers.append(answer)
-    
     if st.button("查看我的体质结果", type="primary"):
         constitution_type, description = judge_constitution(answers)
         st.success(f"**您的体质类型是：{constitution_type}**")
         st.info(description)
-    
     st.markdown("---")
     if st.button("关闭测试"):
         st.session_state.show_constitution_test = False
         st.rerun()
 else:
-    # ========== 主应用视图 ==========
-    col_main_title, col_main_popup = st.columns([5,1])
+    col_logo, col_main_title, col_main_popup = st.columns([1,5,1])
+    with col_logo:
+        st.markdown(f'<img src="data:image/png;base64,{tcm_logo_b64}" width="144" />', unsafe_allow_html=True)
     with col_main_title:
         st.markdown('<h1 class="title">🌿 中医智能小助手</h1>', unsafe_allow_html=True)
-        
-        # 添加醒目的风险提示
         st.markdown('<div class="risk-warning"><strong>⚠️ 风险提示：</strong>本产品仅为AI技术演示，内容仅供参考，不能替代专业医疗诊断。如有健康问题，请及时就医。</div>', unsafe_allow_html=True)
-        
     with col_main_popup:
         if st.button("🧬 体质测试", use_container_width=True):
             st.session_state.show_constitution_test = True
@@ -398,21 +367,44 @@ else:
             content = ai_msg['content']
             if "一、辨证分析" in content and "二、养生建议" in content:
                 parts = content.split("二、养生建议")
-                # 清理辨证分析部分的特殊标记
                 clean_analysis = parts[0].replace('一、辨证分析', '').strip()
-                st.info(f"🌿 **中医辨证**\n{clean_analysis}")
-                
-                # 清理养生建议部分的特殊标记
                 clean_suggestions = parts[1].strip()
-                st.success(f"🍵 **养生建议**\n{clean_suggestions}")
-                
+                st.markdown(
+                    f"""
+                    <div class="doctor-avatar-box">
+                        <img src="data:image/png;base64,{doctor_avatar_b64}" class="doctor-avatar-img" alt="AI医生头像"/>
+                        <div class="doctor-avatar-content">
+                            <span style="color:#3A5F0B;font-weight:bold;">🌿 中医辨证</span><br>{clean_analysis}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True
+                )
+                st.markdown(
+                    f"""
+                    <div class="doctor-avatar-box">
+                        <img src="data:image/png;base64,{doctor_avatar_b64}" class="doctor-avatar-img" alt="AI医生头像"/>
+                        <div class="doctor-avatar-content">
+                            <span style="color:#A0522D;font-weight:bold;">🍵 养生建议</span><br>{clean_suggestions}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True
+                )
                 st.markdown("""<div class="continue-card">💡 <b>需要更详细的调理方案？</b><br>点击下方按钮，获取膏方、茶饮、药膳等专业建议。</div>""", unsafe_allow_html=True)
                 if st.button("获取更多中医建议", key=f"more_{i}"):
                     with st.spinner("正在检索更多方案..."):
                         more_advice = call_zhipu_llm(user_msg['content'], st.session_state.chat_history, more_advice=True)
                     st.success(f"🌟 **专业调理方案**：\n\n{more_advice}")
-            else: # AI在追问
-                st.info(f"🤖 **AI专家追问**：\n> {content}")
+            else:
+                st.markdown(
+                    f"""
+                    <div class="doctor-avatar-box">
+                        <img src="data:image/png;base64,{doctor_avatar_b64}" class="doctor-avatar-img" alt="AI医生头像"/>
+                        <div class="doctor-avatar-content">
+                            <span style="color:#3A5F0B;font-weight:bold;">🤖 AI专家追问</span><br>{content}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True
+                )
             st.divider()
 
     with st.expander("💡 使用说明"):

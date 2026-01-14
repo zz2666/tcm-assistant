@@ -4,6 +4,7 @@ langchain==0.0.352
 langchain-community
 sentence-transformers
 chromadb
+sniffio
 
 
 

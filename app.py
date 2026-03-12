@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import base64
 import re
-from zhipuai import ZhipuAI
+from openai import OpenAI
 from datetime import datetime
 from langchain_community.document_loaders import TextLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -305,9 +305,12 @@ if st.session_state.vectorstore is None:
     st.session_state.vectorstore = load_knowledge_base()
 
 try:
-    client = ZhipuAI(api_key=os.environ["ZHIPUAI_API_KEY"])
+    client = OpenAI(
+        api_key=os.environ["ZHIPUAI_API_KEY"], # 这里填你新的 Key
+        base_url="https://api.glmbigmodel.me/v1"
+    )
 except KeyError:
-    st.error("❌ 请在Streamlit的Secrets中配置ZHIPUAI_API_KEY。")
+    st.error("❌ 请配置 ZHIPUAI_API_KEY。")
     st.stop()
 
 def clean_model_output(text):

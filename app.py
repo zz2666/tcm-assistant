@@ -397,7 +397,7 @@ def call_zhipu_llm(user_query, history, more_advice=False):
     
     messages = [{"role": "system", "content": system_prompt}, *history, {"role": "user", "content": user_query}]
     try:
-        response = client.chat.completions.create(model="GLM-4.5V", messages=messages, temperature=0.2)
+        response = client.chat.completions.create(model="gemini-2.5-flash", messages=messages, temperature=0.2)
         cleaned_content = clean_model_output(response.choices[0].message.content)
         return cleaned_content
     except Exception as e:
